@@ -3,22 +3,15 @@
  * 
  * Este arquivo contém SOMENTE a chave pública do Supabase.
  * NUNCA inclua service_role key ou secret key aqui.
- * 
- * Como configurar:
- * 1. Acesse https://app.supabase.com
- * 2. Selecione seu projeto
- * 3. Vá para Settings > API
- * 4. Copie a URL (Project URL) e a chave pública (anon public key)
- * 5. Substitua os valores abaixo
  */
 
 window.SUPABASE_CONFIG = {
-  // Substitua pela sua URL do Supabase (ex: https://seu-projeto.supabase.co)
-  URL: 'https://YOUR_PROJECT_ID.supabase.co',
+  // URL do Supabase (Project URL)
+  URL: 'https://flrnisqsqctfyvedjwnn.supabase.co',
   
-  // Substitua pela sua chave pública do Supabase (anon key)
+  // Chave pública do Supabase (anon key)
   // NÃO use service_role key ou secret key aqui!
-  PUBLISHABLE_KEY: 'YOUR_ANON_PUBLIC_KEY'
+  PUBLISHABLE_KEY: 'sb_publishable_ioGfXG7nUrFwZGAYYVwWKw_LD_BeJbV'
 };
 
 // Validação: certificar que as chaves foram configuradas
