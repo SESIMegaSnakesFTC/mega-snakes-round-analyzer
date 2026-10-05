@@ -377,7 +377,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     }
 
     sb=window.supabase.createClient(URL,KEY,{
-      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+      auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:true}
     });
 
     const {data:{session},error}=await sb.auth.getSession();
