@@ -194,7 +194,9 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
       '<div class="mega-auth-card">' +
       '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
       '<h1 class="mega-auth-title">Entrar</h1>' +
-      '<p class="mega-auth-sub">Entre ou crie uma conta para sincronizar seus rounds e configurações.</p>' +
+      '<p class="mega-auth-sub">Entre com sua conta Google para acessar seus rounds e configurações.</p>' +
+      '<button class="mega-auth-btn google" id="mega-google" type="button">CONTINUAR COM GOOGLE</button>' +
+      '<div style="text-align:center;color:#888;font-size:12px;margin:14px 0">ou</div>' +
       '<div class="mega-auth-tabs"><button class="mega-auth-tab active" id="mega-login-tab" type="button">Entrar</button><button class="mega-auth-tab" id="mega-signup-tab" type="button">Criar conta</button></div>' +
       '<div id="mega-name-wrap" style="display:none"><label class="mega-auth-label">Nome</label><input class="mega-auth-input" id="mega-name" type="text" autocomplete="name" placeholder="Seu nome"></div>' +
       '<label class="mega-auth-label">E-mail</label><input class="mega-auth-input" id="mega-email" type="email" autocomplete="email" placeholder="voce@email.com">' +
@@ -216,6 +218,19 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     }
     loginTab.onclick=()=>mode(false);
     signupTab.onclick=()=>mode(true);
+
+    document.getElementById("mega-google").onclick=async()=>{
+      msg.textContent="Abrindo o Google...";
+      try{
+        const r=await sb.auth.signInWithOAuth({
+          provider:"google",
+          options:{redirectTo:window.location.origin+window.location.pathname}
+        });
+        if(r.error)throw r.error;
+      }catch(e){
+        msg.textContent=e&&e.message?e.message:"Não foi possível iniciar o login com Google.";
+      }
+    };
 
     submit.onclick=async()=>{
       const email=document.getElementById("mega-email").value.trim();
