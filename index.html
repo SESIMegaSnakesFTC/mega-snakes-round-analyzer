@@ -125,307 +125,184 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
   "use strict";
 
   const STORE_KEY="mega-snakes-round-analyzer";
-  const SESSION_KEY="mega-snakes-cloud-user-v1";
+  const REDIRECT=window.location.origin+window.location.pathname;
   const URL=window.SUPABASE_CONFIG&&window.SUPABASE_CONFIG.URL;
   const KEY=window.SUPABASE_CONFIG&&window.SUPABASE_CONFIG.PUBLISHABLE_KEY;
 
-  let sb=null;
-  let currentUser=null;
-  let booting=true;
-  let saveTimer=null;
-  let saveChain=Promise.resolve();
+  let sb=null,currentUser=null,booting=true,saveTimer=null,saveChain=Promise.resolve();
 
-  function store(){
-    return window.__MEGA_APP_READY&&typeof window.__MEGA_APP_READY.getState==="function"
-      ? window.__MEGA_APP_READY:null;
-  }
+  const style=document.createElement("style");
+  style.textContent=
+    '#mega-auth-root{position:fixed!important;inset:0!important;z-index:2147483647!important;background:#faf9f5!important;color:#141413!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:20px!important;font-family:-apple-system,BlinkMacSystemFont,"DM Sans",sans-serif!important}' +
+    '#mega-auth-root *{box-sizing:border-box!important}' +
+    '.mega-auth-card{width:min(440px,100%);background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.12)}' +
+    '.mega-auth-brand{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#16835f;margin-bottom:10px}' +
+    '.mega-auth-title{font-size:30px;font-weight:800;margin:0 0 7px}' +
+    '.mega-auth-sub{color:#666;font-size:14px;line-height:1.5;margin:0 0 22px}' +
+    '.mega-auth-label{display:block;font-size:12px;font-weight:700;margin:13px 0 6px}' +
+    '.mega-auth-input{width:100%;padding:12px 13px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;outline:none}' +
+    '.mega-auth-btn{width:100%;padding:12px 14px;border:0;border-radius:10px;background:#16835f;color:#fff;font-weight:800;cursor:pointer;margin-top:12px}' +
+    '.mega-auth-btn.secondary{background:#f1f3f0;color:#14583f}' +
+    '.mega-auth-btn.google{background:#fff;color:#222;border:1px solid #d7d7d2}' +
+    '.mega-auth-msg{min-height:20px;font-size:13px;margin-top:12px;color:#b42318}' +
+    '.mega-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#f3f4f1;padding:4px;border-radius:10px;margin-bottom:15px}' +
+    '.mega-auth-tab{border:0;background:transparent;padding:9px;border-radius:8px;font-weight:700;cursor:pointer}' +
+    '.mega-auth-tab.active{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}' +
+    '#mega-account-badge{position:fixed;z-index:2147483646;right:14px;bottom:14px;background:#16835f;color:#fff;border:0;border-radius:999px;padding:8px 12px;font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.15);cursor:pointer}';
+  document.head.appendChild(style);
 
   function root(){
     let el=document.getElementById("mega-auth-root");
-    if(!el){
-      el=document.createElement("div");
-      el.id="mega-auth-root";
-      document.body.appendChild(el);
-    }
+    if(!el){el=document.createElement("div");el.id="mega-auth-root";document.body.appendChild(el);}
+    el.style.setProperty("display","flex","important");
     return el;
   }
-
-  function styles(){
-    if(document.getElementById("mega-auth-styles-final")) return;
-    const s=document.createElement("style");
-    s.id="mega-auth-styles-final";
-    s.textContent=`
-      #mega-auth-root{position:fixed;inset:0;z-index:999999;background:#faf9f5;color:#141413;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,"DM Sans",sans-serif}
-      #mega-auth-root *{box-sizing:border-box}
-      .mega-auth-card{width:min(440px,100%);background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.12)}
-      .mega-auth-brand{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#16835f;margin-bottom:10px}
-      .mega-auth-title{font-size:30px;font-weight:800;margin:0 0 7px}
-      .mega-auth-sub{color:#666;font-size:14px;line-height:1.5;margin:0 0 22px}
-      .mega-auth-label{display:block;font-size:12px;font-weight:700;margin:13px 0 6px}
-      .mega-auth-input{width:100%;padding:12px 13px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;outline:none}
-      .mega-auth-input:focus{border-color:#16835f;box-shadow:0 0 0 3px rgba(22,131,95,.12)}
-      .mega-auth-btn{width:100%;padding:12px 14px;border:0;border-radius:10px;background:#16835f;color:#fff;font-weight:800;cursor:pointer;margin-top:16px}
-      .mega-auth-btn.secondary{background:#f1f3f0;color:#14583f;margin-top:9px}
-      .mega-auth-msg{min-height:20px;font-size:13px;margin-top:12px;color:#b42318}
-      .mega-auth-note{font-size:11px;color:#777;line-height:1.45;margin-top:16px}
-      .mega-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#f3f4f1;padding:4px;border-radius:10px;margin-bottom:15px}
-      .mega-auth-tab{border:0;background:transparent;padding:9px;border-radius:8px;font-weight:700;cursor:pointer}
-      .mega-auth-tab.active{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-      #mega-account-badge{position:fixed;z-index:99990;right:14px;bottom:14px;background:#16835f;color:white;border:0;border-radius:999px;padding:8px 12px;font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.15);cursor:pointer}
-    `;
-    document.head.appendChild(s);
-  }
-
-  function hideRoot(){
+  function hide(){
     const el=document.getElementById("mega-auth-root");
-    if(el) el.style.display="none";
+    if(el)el.style.setProperty("display","none","important");
+  }
+  function store(){
+    return window.__MEGA_APP_READY&&typeof window.__MEGA_APP_READY.getState==="function"?window.__MEGA_APP_READY:null;
+  }
+  function localState(){
+    try{const x=localStorage.getItem(STORE_KEY);return x?JSON.parse(x):null;}catch(e){return null;}
+  }
+  function setLocal(state){
+    if(state)localStorage.setItem(STORE_KEY,JSON.stringify({state,version:0}));
+  }
+  async function cloudLoad(uid){
+    const r=await sb.from("user_state").select("data").eq("user_id",uid).maybeSingle();
+    if(r.error)throw r.error;
+    return r.data?r.data.data:null;
+  }
+  async function cloudSave(uid,state){
+    if(!state)return;
+    const r=await sb.from("user_state").upsert({user_id:uid,data:state,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+    if(r.error)throw r.error;
+  }
+  function schedule(state){
+    if(booting||!currentUser||!state)return;
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{
+      let snap;try{snap=JSON.parse(JSON.stringify(state));}catch(e){return;}
+      saveChain=saveChain.catch(()=>{}).then(()=>cloudSave(currentUser.id,snap)).catch(()=>{});
+    },300);
   }
 
-  function showLogin(initialMessage){
-    styles();
+  function loginUI(message){
     const el=root();
-    el.style.display="flex";
-    el.innerHTML=`
-      <div class="mega-auth-card">
-        <div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>
-        <h1 class="mega-auth-title">Entrar</h1>
-        <p class="mega-auth-sub">Entre para manter seus rounds, configurações e resultados salvos na sua conta.</p>
-        <div class="mega-auth-tabs">
-          <button class="mega-auth-tab active" id="mega-tab-login" type="button">Entrar</button>
-          <button class="mega-auth-tab" id="mega-tab-signup" type="button">Criar conta</button>
-        </div>
-        <div id="mega-name-wrap" style="display:none">
-          <label class="mega-auth-label">Nome</label>
-          <input class="mega-auth-input" id="mega-name" type="text" autocomplete="name" placeholder="Seu nome">
-        </div>
-        <label class="mega-auth-label">E-mail</label>
-        <input class="mega-auth-input" id="mega-email" type="email" autocomplete="email" placeholder="voce@email.com">
-        <label class="mega-auth-label">Senha</label>
-        <input class="mega-auth-input" id="mega-password" type="password" autocomplete="current-password" placeholder="••••••••">
-        <button class="mega-auth-btn" id="mega-submit" type="button">ENTRAR</button>
-        <div class="mega-auth-msg" id="mega-auth-msg"></div>
-        <div class="mega-auth-note">Os dados desta conta ficam sincronizados com o Supabase.</div>
-      </div>`;
-    if(initialMessage) document.getElementById("mega-auth-msg").textContent=initialMessage;
+    el.innerHTML=
+      '<div class="mega-auth-card">' +
+      '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
+      '<h1 class="mega-auth-title">Entrar</h1>' +
+      '<p class="mega-auth-sub">Entre ou crie uma conta para sincronizar seus rounds e configurações.</p>' +
+      '<button class="mega-auth-btn google" id="mega-google" type="button">Continuar com Google</button>' +
+      '<div class="mega-auth-tabs"><button class="mega-auth-tab active" id="mega-login-tab" type="button">Entrar</button><button class="mega-auth-tab" id="mega-signup-tab" type="button">Criar conta</button></div>' +
+      '<div id="mega-name-wrap" style="display:none"><label class="mega-auth-label">Nome</label><input class="mega-auth-input" id="mega-name" type="text" autocomplete="name" placeholder="Seu nome"></div>' +
+      '<label class="mega-auth-label">E-mail</label><input class="mega-auth-input" id="mega-email" type="email" autocomplete="email" placeholder="voce@email.com">' +
+      '<label class="mega-auth-label">Senha</label><input class="mega-auth-input" id="mega-password" type="password" autocomplete="current-password" placeholder="••••••••">' +
+      '<button class="mega-auth-btn" id="mega-submit" type="button">ENTRAR</button>' +
+      '<div class="mega-auth-msg" id="mega-auth-msg"></div>' +
+      '<div style="font-size:11px;color:#777;line-height:1.45;margin-top:16px">Os dados ficam sincronizados com o Supabase.</div>' +
+      '</div>';
 
+    const msg=document.getElementById("mega-auth-msg");
+    if(message)msg.textContent=message;
     let signup=false;
-    const loginTab=document.getElementById("mega-tab-login");
-    const signupTab=document.getElementById("mega-tab-signup");
+    const loginTab=document.getElementById("mega-login-tab");
+    const signupTab=document.getElementById("mega-signup-tab");
     const nameWrap=document.getElementById("mega-name-wrap");
     const submit=document.getElementById("mega-submit");
-    const msg=document.getElementById("mega-auth-msg");
-
     function mode(v){
-      signup=v;
-      loginTab.classList.toggle("active",!signup);
-      signupTab.classList.toggle("active",signup);
-      nameWrap.style.display=signup?"block":"none";
-      submit.textContent=signup?"CRIAR CONTA":"ENTRAR";
-      document.getElementById("mega-password").autocomplete=signup?"new-password":"current-password";
-      msg.textContent="";
+      signup=v;loginTab.classList.toggle("active",!v);signupTab.classList.toggle("active",v);nameWrap.style.display=v?"block":"none";submit.textContent=v?"CRIAR CONTA":"ENTRAR";msg.textContent="";
     }
     loginTab.onclick=()=>mode(false);
     signupTab.onclick=()=>mode(true);
+
+    document.getElementById("mega-google").onclick=async()=>{
+      msg.textContent="Abrindo Google...";
+      try{
+        const r=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:REDIRECT}});
+        if(r.error)throw r.error;
+      }catch(e){msg.textContent=e&&e.message?e.message:"Não foi possível abrir o login do Google.";}
+    };
 
     submit.onclick=async()=>{
       const email=document.getElementById("mega-email").value.trim();
       const password=document.getElementById("mega-password").value;
       const name=document.getElementById("mega-name").value.trim();
-      if(!email||password.length<6){msg.textContent="Informe um e-mail e uma senha com pelo menos 6 caracteres.";return}
-      if(signup&&!name){msg.textContent="Informe seu nome.";return}
-      submit.disabled=true;
-      msg.textContent="Processando...";
+      if(!email||password.length<6){msg.textContent="Informe um e-mail e uma senha com pelo menos 6 caracteres.";return;}
+      if(signup&&!name){msg.textContent="Informe seu nome.";return;}
+      submit.disabled=true;msg.textContent="Processando...";
       try{
-        const result=signup
-          ? await sb.auth.signUp({email,password,options:{data:{name}}})
-          : await sb.auth.signInWithPassword({email,password});
-        if(result.error) throw result.error;
-        if(signup&&!result.data.session){
-          msg.textContent="Conta criada. Verifique seu e-mail e depois faça login.";
-          submit.disabled=false;
-          return;
-        }
+        const r=signup?await sb.auth.signUp({email,password,options:{data:{name}}}):await sb.auth.signInWithPassword({email,password});
+        if(r.error)throw r.error;
+        if(signup&&!r.data.session){msg.textContent="Conta criada. Verifique seu e-mail e depois faça login.";submit.disabled=false;return;}
         await finishLogin();
-      }catch(err){
-        msg.textContent=err&&err.message?err.message:"Não foi possível concluir a autenticação.";
-        submit.disabled=false;
-      }
+      }catch(e){msg.textContent=e&&e.message?e.message:"Não foi possível concluir a autenticação.";submit.disabled=false;}
     };
   }
 
-  function showSyncError(err){
-    styles();
+  function sessionUI(session){
     const el=root();
-    el.style.display="flex";
-    el.innerHTML=`
-      <div class="mega-auth-card">
-        <div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>
-        <h1 class="mega-auth-title">Falha ao sincronizar</h1>
-        <p class="mega-auth-sub">O login foi feito, mas os dados não puderam ser carregados do Supabase.</p>
-        <div class="mega-auth-msg">${String(err&&err.message?err.message:"Verifique o schema e as políticas RLS.")}</div>
-        <button class="mega-auth-btn" id="mega-retry" type="button">TENTAR NOVAMENTE</button>
-        <button class="mega-auth-btn secondary" id="mega-logout-now" type="button">SAIR DA CONTA</button>
-      </div>`;
-    document.getElementById("mega-retry").onclick=()=>location.reload();
-    document.getElementById("mega-logout-now").onclick=async()=>{await sb.auth.signOut();location.reload();};
-  }
-
-  function accountBadge(user){
-    styles();
-    let b=document.getElementById("mega-account-badge");
-    if(!b){
-      b=document.createElement("button");
-      b.id="mega-account-badge";
-      b.type="button";
-      document.body.appendChild(b);
-    }
-    b.textContent="● "+(user.email||"Conta");
-    b.onclick=async()=>{
-      const {data}=await sb.auth.getUser();
-      const el=root();
-      el.style.display="flex";
-      el.innerHTML=`
-        <div class="mega-auth-card">
-          <div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>
-          <h1 class="mega-auth-title">Sua conta</h1>
-          <p class="mega-auth-sub">Seus dados ficam associados a esta conta.</p>
-          <div style="padding:12px;border:1px solid #ddd;border-radius:10px;font-size:13px">${String(data&&data.user&&data.user.email||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}</div>
-          <button class="mega-auth-btn" id="mega-close-account" type="button">VOLTAR AO ANALISADOR</button>
-          <button class="mega-auth-btn secondary" id="mega-logout" type="button">SAIR DA CONTA</button>
-        </div>`;
-      document.getElementById("mega-close-account").onclick=hideRoot;
-      document.getElementById("mega-logout").onclick=async()=>{
-        clearTimeout(saveTimer);
-        await sb.auth.signOut();
-        localStorage.removeItem(SESSION_KEY);
-        localStorage.removeItem(STORE_KEY);
-        location.reload();
-      };
+    const email=session&&session.user&&session.user.email||"";
+    el.innerHTML=
+      '<div class="mega-auth-card">' +
+      '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
+      '<h1 class="mega-auth-title">Conta encontrada</h1>' +
+      '<p class="mega-auth-sub">Já existe uma sessão autenticada neste navegador.</p>' +
+      '<div style="padding:12px;border:1px solid #ddd;border-radius:10px;font-size:13px;margin-bottom:8px">'+email+'</div>' +
+      '<button class="mega-auth-btn" id="mega-continue" type="button">CONTINUAR COMO ESTA CONTA</button>' +
+      '<button class="mega-auth-btn secondary" id="mega-switch" type="button">SAIR E ENTRAR COM OUTRA CONTA</button>' +
+      '<div class="mega-auth-msg" id="mega-auth-msg"></div>' +
+      '</div>';
+    document.getElementById("mega-continue").onclick=async()=>{try{await finishLogin();}catch(e){loginUI(e.message||"Falha ao sincronizar.");}};
+    document.getElementById("mega-switch").onclick=async()=>{
+      try{await sb.auth.signOut();currentUser=null;loginUI();}catch(e){document.getElementById("mega-auth-msg").textContent=e.message||"Não foi possível sair.";}
     };
-  }
-
-  function getLocalState(){
-    try{
-      const raw=localStorage.getItem(STORE_KEY);
-      return raw?JSON.parse(raw):null;
-    }catch(e){return null;}
-  }
-
-  function setLocalState(state){
-    if(!state) return;
-    localStorage.setItem(STORE_KEY,JSON.stringify({state,version:0}));
-  }
-
-  async function cloudLoad(userId){
-    const {data,error}=await sb.from("user_state").select("data").eq("user_id",userId).maybeSingle();
-    if(error) throw error;
-    return data?data.data:null;
-  }
-
-  async function cloudSave(userId,state){
-    if(!state) return;
-    const {error}=await sb.from("user_state").upsert({
-      user_id:userId,
-      data:state,
-      updated_at:new Date().toISOString()
-    },{onConflict:"user_id"});
-    if(error) throw error;
-  }
-
-  function scheduleCloudSave(userId,state){
-    if(booting||!userId||!state) return;
-    clearTimeout(saveTimer);
-    saveTimer=setTimeout(()=>{
-      saveTimer=null;
-      let snapshot;
-      try{snapshot=JSON.parse(JSON.stringify(state));}catch(e){return}
-      saveChain=saveChain.catch(()=>{}).then(()=>cloudSave(userId,snapshot)).catch(err=>console.error("Supabase save error:",err));
-    },300);
   }
 
   async function finishLogin(){
-    const {data:{user}}=await sb.auth.getUser();
-    if(!user){showLogin("Não foi possível recuperar o usuário autenticado.");return;}
+    const r=await sb.auth.getUser();
+    const user=r.data&&r.data.user;
+    if(!user){loginUI("Não foi possível recuperar o usuário autenticado.");return;}
     currentUser=user;
     const app=store();
-    const local=getLocalState();
+    const local=localState();
     const remote=await cloudLoad(user.id);
-
-    if(remote){
-      if(app&&typeof app.setState==="function") app.setState(remote);
-      setLocalState(remote);
-    }else if(local&&local.state){
-      await cloudSave(user.id,local.state);
-      if(app&&typeof app.setState==="function") app.setState(local.state);
-    }
-
-    localStorage.setItem(SESSION_KEY,user.id);
-    accountBadge(user);
-    hideRoot();
+    if(remote){if(app&&app.setState)app.setState(remote);setLocal(remote);}
+    else if(local&&local.state){await cloudSave(user.id,local.state);if(app&&app.setState)app.setState(local.state);}
+    let b=document.getElementById("mega-account-badge");
+    if(!b){b=document.createElement("button");b.id="mega-account-badge";document.body.appendChild(b);}
+    b.textContent="● "+(user.email||"Conta");
+    b.onclick=()=>sessionUI({user});
+    hide();
     booting=false;
   }
 
   async function boot(){
-    if(!URL||!KEY){
-      showLogin("Supabase não está configurado.");
-      return;
-    }
-
-    if(!window.supabase||typeof window.supabase.createClient!=="function"){
-      showLogin("Não foi possível carregar o Supabase.");
-      return;
-    }
-
-    sb=window.supabase.createClient(URL,KEY,{
-      auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:true}
-    });
-
-    const {data:{session},error}=await sb.auth.getSession();
-    if(error){showLogin(error.message);return;}
-
-    if(session){
-      try{await finishLogin();}
-      catch(err){showSyncError(err);}
-    }else{
-      showLogin();
-      booting=false;
-    }
-
-    sb.auth.onAuthStateChange(async(_event,newSession)=>{
-      if(newSession&&(!currentUser||currentUser.id!==newSession.user.id)){
-        try{await finishLogin();}catch(err){showSyncError(err);}
-      }
+    loginUI();
+    if(!URL||!KEY){loginUI("Supabase não está configurado.");return;}
+    if(!window.supabase||typeof window.supabase.createClient!=="function"){loginUI("Não foi possível carregar o Supabase.");return;}
+    sb=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    const r=await sb.auth.getSession();
+    if(r.error){loginUI(r.error.message);return;}
+    if(r.data&&r.data.session)sessionUI(r.data.session);
+    else booting=false;
+    sb.auth.onAuthStateChange((event,session)=>{
+      if(event==="SIGNED_OUT"){currentUser=null;booting=false;loginUI();}
     });
   }
 
   const originalSetItem=Storage.prototype.setItem;
   Storage.prototype.setItem=function(key,value){
     originalSetItem.call(this,key,value);
-    if(this===localStorage&&key===STORE_KEY&&!booting&&currentUser){
-      try{
-        const parsed=JSON.parse(value);
-        if(parsed&&parsed.state) scheduleCloudSave(currentUser.id,parsed.state);
-      }catch(e){}
+    if(this===localStorage&&key===STORE_KEY&&currentUser&&!booting){
+      try{const p=JSON.parse(value);if(p&&p.state)schedule(p.state);}catch(e){}
     }
   };
 
-  const originalRemoveItem=Storage.prototype.removeItem;
-  Storage.prototype.removeItem=function(key){
-    originalRemoveItem.call(this,key);
-    if(this===localStorage&&key===STORE_KEY&&currentUser){
-      currentUser=null;
-    }
-  };
-
-  function start(){
-    if(document.readyState==="loading"){
-      document.addEventListener("DOMContentLoaded",()=>{boot().catch(showSyncError);},{once:true});
-    }else{
-      boot().catch(showSyncError);
-    }
-  }
-  start();
+  boot().catch(e=>loginUI(e&&e.message?e.message:"Erro ao iniciar a autenticação."));
 })();
 </script>
-
 </body></html>
