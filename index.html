@@ -125,7 +125,6 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
   "use strict";
 
   const STORE_KEY="mega-snakes-round-analyzer";
-  const REDIRECT=window.location.origin+window.location.pathname;
   const URL=window.SUPABASE_CONFIG&&window.SUPABASE_CONFIG.URL;
   const KEY=window.SUPABASE_CONFIG&&window.SUPABASE_CONFIG.PUBLISHABLE_KEY;
 
@@ -196,7 +195,6 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
       '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
       '<h1 class="mega-auth-title">Entrar</h1>' +
       '<p class="mega-auth-sub">Entre ou crie uma conta para sincronizar seus rounds e configurações.</p>' +
-      '<button class="mega-auth-btn google" id="mega-google" type="button">Continuar com Google</button>' +
       '<div class="mega-auth-tabs"><button class="mega-auth-tab active" id="mega-login-tab" type="button">Entrar</button><button class="mega-auth-tab" id="mega-signup-tab" type="button">Criar conta</button></div>' +
       '<div id="mega-name-wrap" style="display:none"><label class="mega-auth-label">Nome</label><input class="mega-auth-input" id="mega-name" type="text" autocomplete="name" placeholder="Seu nome"></div>' +
       '<label class="mega-auth-label">E-mail</label><input class="mega-auth-input" id="mega-email" type="email" autocomplete="email" placeholder="voce@email.com">' +
@@ -218,14 +216,6 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     }
     loginTab.onclick=()=>mode(false);
     signupTab.onclick=()=>mode(true);
-
-    document.getElementById("mega-google").onclick=async()=>{
-      msg.textContent="Abrindo Google...";
-      try{
-        const r=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:REDIRECT}});
-        if(r.error)throw r.error;
-      }catch(e){msg.textContent=e&&e.message?e.message:"Não foi possível abrir o login do Google.";}
-    };
 
     submit.onclick=async()=>{
       const email=document.getElementById("mega-email").value.trim();
