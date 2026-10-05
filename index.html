@@ -219,7 +219,22 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     loginTab.onclick=()=>mode(false);
     signupTab.onclick=()=>mode(true);
 
+    async function googleProviderEnabled(){
+      try{
+        const r=await fetch(URL.replace(/\\/$/,"")+"/auth/v1/settings",{headers:{apikey:KEY}});
+        if(!r.ok)return false;
+        const s=await r.json();
+        return !!(s&&s.external&&s.external.google);
+      }catch(e){return false;}
+    }
+
     document.getElementById("mega-google").onclick=async()=>{
+      msg.textContent="Verificando o Google...";
+      const enabled=await googleProviderEnabled();
+      if(!enabled){
+        msg.textContent="O Google ainda não está ativado no Supabase. Ative o provedor Google e configure o Client ID/Secret para continuar.";
+        return;
+      }
       msg.textContent="Abrindo o Google...";
       try{
         const r=await sb.auth.signInWithOAuth({
