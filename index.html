@@ -408,4 +408,343 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
   });
 })();
 </script>
+
+<script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  "use strict";
+
+  const STORE_KEY = "mega-snakes-round-analyzer";
+  const SESSION_KEY = "mega-snakes-cloud-user-v1";
+  const PROJECT_URL = window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.URL;
+  const PUBLISHABLE_KEY = window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.PUBLISHABLE_KEY;
+
+  let sb = null;
+  let currentUser = null;
+  let booting = true;
+  let saveTimer = null;
+  let saveChain = Promise.resolve();
+
+  function appStore(){
+    return window.__MEGA_APP_READY && typeof window.__MEGA_APP_READY.getState === "function"
+      ? window.__MEGA_APP_READY
+      : null;
+  }
+
+  function ensureAuthRoot(){
+    let root = document.getElementById("mega-auth-root");
+    if(root) return root;
+
+    const css = document.createElement("style");
+    css.textContent = `
+      #mega-auth-root{position:fixed;inset:0;z-index:999999;background:#faf9f5;color:#141413;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,"DM Sans",sans-serif}
+      #mega-auth-root *{box-sizing:border-box}
+      .mega-auth-card{width:min(440px,100%);background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+      .mega-auth-brand{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#16835f;margin-bottom:10px}
+      .mega-auth-title{font-size:30px;font-weight:800;margin:0 0 7px}
+      .mega-auth-sub{color:#666;font-size:14px;line-height:1.5;margin:0 0 22px}
+      .mega-auth-label{display:block;font-size:12px;font-weight:700;margin:13px 0 6px}
+      .mega-auth-input{width:100%;padding:12px 13px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;outline:none}
+      .mega-auth-input:focus{border-color:#16835f;box-shadow:0 0 0 3px rgba(22,131,95,.12)}
+      .mega-auth-btn{width:100%;padding:12px 14px;border:0;border-radius:10px;background:#16835f;color:#fff;font-weight:800;cursor:pointer;margin-top:16px}
+      .mega-auth-btn.secondary{background:#f1f3f0;color:#14583f;margin-top:9px}
+      .mega-auth-msg{min-height:20px;font-size:13px;margin-top:12px;color:#b42318}
+      .mega-auth-note{font-size:11px;color:#777;line-height:1.45;margin-top:16px}
+      .mega-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#f3f4f1;padding:4px;border-radius:10px;margin-bottom:15px}
+      .mega-auth-tab{border:0;background:transparent;padding:9px;border-radius:8px;font-weight:700;cursor:pointer}
+      .mega-auth-tab.active{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+      #mega-account-badge{position:fixed;z-index:99990;right:14px;bottom:14px;background:#16835f;color:white;border:0;border-radius:999px;padding:8px 12px;font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.15);cursor:pointer}
+    `;
+    document.head.appendChild(css);
+
+    root=document.createElement("div");
+    root.id="mega-auth-root";
+    document.body.appendChild(root);
+    return root;
+  }
+
+  function showAuth(message){
+    const root=ensureAuthRoot();
+    root.style.display="flex";
+    let signup=false;
+    root.innerHTML=`
+      <div class="mega-auth-card">
+        <div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>
+        <h1 class="mega-auth-title">Entrar</h1>
+        <p class="mega-auth-sub">Entre para manter seus rounds, configurações e resultados salvos na sua conta.</p>
+        <div class="mega-auth-tabs">
+          <button class="mega-auth-tab active" id="mega-tab-login" type="button">Entrar</button>
+          <button class="mega-auth-tab" id="mega-tab-signup" type="button">Criar conta</button>
+        </div>
+        <div id="mega-name-wrap" style="display:none">
+          <label class="mega-auth-label">Nome</label>
+          <input class="mega-auth-input" id="mega-name" type="text" autocomplete="name" placeholder="Seu nome">
+        </div>
+        <label class="mega-auth-label">E-mail</label>
+        <input class="mega-auth-input" id="mega-email" type="email" autocomplete="email" placeholder="voce@email.com">
+        <label class="mega-auth-label">Senha</label>
+        <input class="mega-auth-input" id="mega-password" type="password" autocomplete="current-password" placeholder="••••••••">
+        <button class="mega-auth-btn" id="mega-submit" type="button">ENTRAR</button>
+        <div class="mega-auth-msg" id="mega-auth-msg"></div>
+        <div class="mega-auth-note">Sua conta sincroniza os dados com o Supabase para você acessar o analisador em outros dispositivos.</div>
+      </div>`;
+
+    if(message) document.getElementById("mega-auth-msg").textContent=message;
+
+    const loginTab=document.getElementById("mega-tab-login");
+    const signupTab=document.getElementById("mega-tab-signup");
+    const nameWrap=document.getElementById("mega-name-wrap");
+    const submit=document.getElementById("mega-submit");
+    const msg=document.getElementById("mega-auth-msg");
+
+    function setMode(isSignup){
+      signup=isSignup;
+      loginTab.classList.toggle("active",!signup);
+      signupTab.classList.toggle("active",signup);
+      nameWrap.style.display=signup?"block":"none";
+      submit.textContent=signup?"CRIAR CONTA":"ENTRAR";
+      document.getElementById("mega-password").autocomplete=signup?"new-password":"current-password";
+      msg.textContent="";
+    }
+
+    loginTab.onclick=()=>setMode(false);
+    signupTab.onclick=()=>setMode(true);
+
+    submit.onclick=async()=>{
+      const email=document.getElementById("mega-email").value.trim();
+      const password=document.getElementById("mega-password").value;
+      const name=document.getElementById("mega-name").value.trim();
+
+      if(!email || password.length<6){
+        msg.textContent="Informe um e-mail e uma senha com pelo menos 6 caracteres.";
+        return;
+      }
+      if(signup && !name){
+        msg.textContent="Informe seu nome.";
+        return;
+      }
+
+      submit.disabled=true;
+      msg.textContent="Processando...";
+
+      try{
+        if(signup){
+          const result=await sb.auth.signUp({
+            email,
+            password,
+            options:{data:{name}}
+          });
+          if(result.error) throw result.error;
+
+          if(!result.data.session){
+            msg.textContent="Conta criada. Verifique seu e-mail para confirmar o cadastro e depois faça login.";
+            submit.disabled=false;
+            return;
+          }
+        }else{
+          const result=await sb.auth.signInWithPassword({email,password});
+          if(result.error) throw result.error;
+        }
+        await finishLogin();
+      }catch(error){
+        msg.textContent=error && error.message ? error.message : "Não foi possível concluir a autenticação.";
+        submit.disabled=false;
+      }
+    };
+  }
+
+  function showSyncError(error){
+    const root=ensureAuthRoot();
+    root.style.display="flex";
+    root.innerHTML=`
+      <div class="mega-auth-card">
+        <div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>
+        <h1 class="mega-auth-title">Falha ao sincronizar</h1>
+        <p class="mega-auth-sub">O login foi realizado, mas os dados não puderam ser carregados do banco.</p>
+        <div class="mega-auth-msg">${String(error && error.message ? error.message : "Verifique o schema e as políticas RLS do Supabase.")}</div>
+        <button class="mega-auth-btn" id="mega-retry" type="button">TENTAR NOVAMENTE</button>
+        <button class="mega-auth-btn secondary" id="mega-logout-now" type="button">SAIR DA CONTA</button>
+      </div>`;
+    document.getElementById("mega-retry").onclick=()=>location.reload();
+    document.getElementById("mega-logout-now").onclick=async()=>{ await sb.auth.signOut(); location.reload(); };
+  }
+
+  function accountBadge(user){
+    let badge=document.getElementById("mega-account-badge");
+    if(!badge){
+      badge=document.createElement("button");
+      badge.id="mega-account-badge";
+      badge.type="button";
+      document.body.appendChild(badge);
+    }
+    badge.textContent="● "+(user.email||"Conta");
+    badge.onclick=showAccount;
+  }
+
+  async function showAccount(){
+    if(!sb) return;
+    const {data}=await sb.auth.getUser();
+    const email=data && data.user ? (data.user.email||"") : "";
+    const root=ensureAuthRoot();
+    root.style.display="flex";
+    root.innerHTML=`
+      <div class="mega-auth-card">
+        <div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>
+        <h1 class="mega-auth-title">Sua conta</h1>
+        <p class="mega-auth-sub">Seus dados ficam associados a esta conta.</p>
+        <div style="padding:12px;border:1px solid #ddd;border-radius:10px;font-size:13px">${String(email).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}</div>
+        <button class="mega-auth-btn" id="mega-close-account" type="button">VOLTAR AO ANALISADOR</button>
+        <button class="mega-auth-btn secondary" id="mega-logout" type="button">SAIR DA CONTA</button>
+      </div>`;
+    document.getElementById("mega-close-account").onclick=()=>{root.style.display="none";};
+    document.getElementById("mega-logout").onclick=async()=>{
+      clearTimeout(saveTimer);
+      saveTimer=null;
+      await sb.auth.signOut();
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(STORE_KEY);
+      location.reload();
+    };
+  }
+
+  function getLocalState(){
+    try{
+      const raw=localStorage.getItem(STORE_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+
+  async function cloudLoad(userId){
+    const {data,error}=await sb.from("user_state").select("data").eq("user_id",userId).maybeSingle();
+    if(error) throw error;
+    return data ? data.data : null;
+  }
+
+  async function cloudSave(userId,state){
+    if(!state) return;
+    const {error}=await sb.from("user_state").upsert({
+      user_id:userId,
+      data:state,
+      updated_at:new Date().toISOString()
+    },{onConflict:"user_id"});
+    if(error) throw error;
+  }
+
+  function setLocalState(state){
+    if(!state) return;
+    localStorage.setItem(STORE_KEY,JSON.stringify({state:state,version:0}));
+  }
+
+  function scheduleCloudSave(userId,state){
+    if(booting || !userId || !state) return;
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{
+      saveTimer=null;
+      const snapshot=JSON.parse(JSON.stringify(state));
+      saveChain=saveChain
+        .catch(()=>{})
+        .then(()=>cloudSave(userId,snapshot))
+        .catch(error=>console.error("Supabase save error:",error));
+    },300);
+  }
+
+  async function finishLogin(){
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user){
+      showAuth("Não foi possível recuperar o usuário autenticado.");
+      return;
+    }
+
+    currentUser=user;
+    const app=appStore();
+    const local=getLocalState();
+    const remote=await cloudLoad(user.id);
+
+    if(remote){
+      if(app && typeof app.setState==="function") app.setState(remote);
+      setLocalState(remote);
+    }else if(local && local.state){
+      await cloudSave(user.id,local.state);
+      if(app && typeof app.setState==="function") app.setState(local.state);
+    }
+
+    localStorage.setItem(SESSION_KEY,user.id);
+    accountBadge(user);
+    const root=document.getElementById("mega-auth-root");
+    if(root) root.style.display="none";
+    booting=false;
+  }
+
+  async function boot(){
+    if(!PROJECT_URL || !PUBLISHABLE_KEY){
+      showAuth("Configure URL e Publishable Key no supabase-config.js.");
+      return;
+    }
+
+    sb=window.supabase.createClient(PROJECT_URL,PUBLISHABLE_KEY,{
+      auth:{
+        persistSession:true,
+        autoRefreshToken:true,
+        detectSessionInUrl:true
+      }
+    });
+
+    ensureAuthRoot();
+
+    const {data:{session},error}=await sb.auth.getSession();
+    if(error){
+      showAuth(error.message);
+      return;
+    }
+
+    if(session){
+      try{
+        await finishLogin();
+      }catch(error){
+        showSyncError(error);
+      }
+    }else{
+      showAuth();
+      booting=false;
+    }
+
+    sb.auth.onAuthStateChange(async(_event,newSession)=>{
+      if(newSession && (!currentUser || currentUser.id!==newSession.user.id)){
+        try{ await finishLogin(); }
+        catch(error){ showSyncError(error); }
+      }else if(!newSession){
+        currentUser=null;
+        clearTimeout(saveTimer);
+        saveTimer=null;
+        booting=true;
+        const badge=document.getElementById("mega-account-badge");
+        if(badge) badge.remove();
+        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(STORE_KEY);
+        location.reload();
+      }
+    });
+  }
+
+  const originalSetItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){
+    originalSetItem.call(this,key,value);
+    if(this===localStorage && key===STORE_KEY && !booting && currentUser){
+      try{
+        const parsed=JSON.parse(value);
+        if(parsed && parsed.state) scheduleCloudSave(currentUser.id,parsed.state);
+      }catch(e){}
+    }
+  };
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",()=>{ boot().catch(showSyncError); },{once:true});
+  }else{
+    boot().catch(showSyncError);
+  }
+})();
+</script>
+
 </body></html>
