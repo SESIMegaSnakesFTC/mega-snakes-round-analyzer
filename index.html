@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<div id="mega-auth-root" style="position:fixed;inset:0;z-index:2147483647;background:#faf9f5;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif"><div style="width:min(440px,100%);padding:32px;text-align:center;background:#fff;border:1px solid #ddd;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.12)"><div style="font-size:12px;font-weight:800;letter-spacing:.15em;color:#16835f">MEGA SNAKES • ROUND ANALYZER</div><h1 style="font-size:28px;margin:12px 0 6px">Carregando acesso...</h1><p style="margin:0;color:#777;font-size:14px">Verificando sua conta.</p><button id="mega-google-static" type="button" style="margin-top:18px;width:100%;padding:13px 16px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;color:#222;font-weight:800;cursor:pointer;display:none">CONTINUAR COM GOOGLE</button></div></div>
+<div id="mega-auth-root" style="position:fixed;inset:0;z-index:2147483647;background:#faf9f5;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif"><div style="width:min(440px,100%);padding:32px;text-align:center;background:#fff;border:1px solid #ddd;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.12)"><div style="font-size:12px;font-weight:800;letter-spacing:.15em;color:#16835f">MEGA SNAKES • ANÁLISE DE ROUND</div><h1 style="font-size:28px;margin:12px 0 6px">Carregando acesso...</h1><p style="margin:0;color:#777;font-size:14px">Verificando sua conta.</p><button id="mega-google-static" type="button" style="margin-top:18px;width:100%;padding:13px 16px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;color:#222;font-weight:800;cursor:pointer;display:none">CONTINUAR COM GOOGLE</button></div></div>
 
 <title>Mega Snakes Round Analyzer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -209,7 +209,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     const isSignup=!!signup;
     el.innerHTML=
       '<div class="mega-auth-card">' +
-      '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
+      '<div class="mega-auth-brand">MEGA SNAKES • ANÁLISE DE ROUND</div>' +
       '<h1 class="mega-auth-title">'+(isSignup?"Criar conta":"Entrar")+'</h1>' +
       '<p class="mega-auth-sub">Entre com sua conta para salvar tudo na nuvem e acessar de outros dispositivos.</p>' +
       '<button class="mega-auth-btn google" id="mega-google" type="button"><span style="font-size:18px;font-weight:800">G</span> CONTINUAR COM GOOGLE</button>' +
@@ -311,7 +311,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     const email=session&&session.user&&session.user.email||"";
     el.innerHTML=
       '<div class="mega-auth-card">' +
-      '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
+      '<div class="mega-auth-brand">MEGA SNAKES • ANÁLISE DE ROUND</div>' +
       '<h1 class="mega-auth-title">Conta encontrada</h1>' +
       '<p class="mega-auth-sub">Encontramos uma sessão salva neste navegador.</p>' +
       '<div style="padding:12px;border:1px solid #ddd;border-radius:10px;font-size:13px;margin-bottom:10px">'+email+'</div>' +
@@ -332,7 +332,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     const el=root();
     const text=String(e&&e.message?e.message:"Não foi possível sincronizar os dados.").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
     el.innerHTML=
-      '<div class="mega-auth-card"><div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
+      '<div class="mega-auth-card"><div class="mega-auth-brand">MEGA SNAKES • ANÁLISE DE ROUND</div>' +
       '<h1 class="mega-auth-title">Erro de sincronização</h1>' +
       '<p class="mega-auth-sub">O login funcionou, mas não conseguimos carregar os dados da conta.</p>' +
       '<div class="mega-auth-msg">'+text+'</div>' +
