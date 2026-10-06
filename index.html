@@ -145,6 +145,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     '.mega-auth-input{width:100%;padding:12px 13px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;outline:none}' +
     '.mega-auth-btn{width:100%;padding:12px 14px;border:0;border-radius:10px;background:#16835f;color:#fff;font-weight:800;cursor:pointer;margin-top:12px}' +
     '.mega-auth-btn.secondary{background:#f1f3f0;color:#14583f}' +
+    '.mega-auth-btn.google{background:#fff;color:#222;border:1px solid #d7d7d2;display:flex;align-items:center;justify-content:center;gap:10px}' +
     '.mega-auth-link{display:block;width:100%;border:0;background:none;color:#16835f;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px}' +
     '.mega-auth-msg{min-height:20px;font-size:13px;margin-top:12px;color:#b42318}' +
     '.mega-auth-ok{color:#16794e}' +
@@ -199,7 +200,9 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
       '<div class="mega-auth-card">' +
       '<div class="mega-auth-brand">MEGA SNAKES • ROUND ANALYZER</div>' +
       '<h1 class="mega-auth-title">'+(isSignup?"Criar conta":"Entrar")+'</h1>' +
-      '<p class="mega-auth-sub">Entre com e-mail e senha para salvar tudo na sua conta e acessar em outros dispositivos.</p>' +
+      '<p class="mega-auth-sub">Entre com sua conta para salvar tudo na nuvem e acessar de outros dispositivos.</p>' +
+      '<button class="mega-auth-btn google" id="mega-google" type="button"><span style="font-size:18px;font-weight:800">G</span> CONTINUAR COM GOOGLE</button>' +
+      '<div style="text-align:center;color:#888;font-size:12px;margin:12px 0">ou entre com e-mail</div>' +
       '<div class="mega-auth-tabs">' +
       '<button class="mega-auth-tab '+(!isSignup?"active":"")+'" id="mega-login-tab" type="button">Entrar</button>' +
       '<button class="mega-auth-tab '+(isSignup?"active":"")+'" id="mega-signup-tab" type="button">Criar conta</button>' +
@@ -234,6 +237,19 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     }
     loginTab.onclick=()=>mode(false);
     signupTab.onclick=()=>mode(true);
+
+    document.getElementById("mega-google").onclick=async()=>{
+      msg.textContent="Abrindo o Google...";
+      try{
+        const r=await sb.auth.signInWithOAuth({
+          provider:"google",
+          options:{redirectTo:window.location.origin+window.location.pathname}
+        });
+        if(r.error)throw r.error;
+      }catch(e){
+        msg.textContent=e&&e.message?e.message:"O login com Google ainda não está configurado no Supabase.";
+      }
+    };
 
     document.getElementById("mega-forgot").onclick=async()=>{
       const email=document.getElementById("mega-email").value.trim();
