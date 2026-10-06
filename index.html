@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<div id="mega-auth-root" style="position:fixed;inset:0;z-index:2147483647;background:#faf9f5;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif"><div style="width:min(440px,100%);padding:32px;text-align:center;background:#fff;border:1px solid #ddd;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.12)"><div style="font-size:12px;font-weight:800;letter-spacing:.15em;color:#16835f">MEGA SNAKES • ROUND ANALYZER</div><h1 style="font-size:28px;margin:12px 0 6px">Carregando acesso...</h1><p style="margin:0;color:#777;font-size:14px">Verificando sua conta.</p></div></div>
+<div id="mega-auth-root" style="position:fixed;inset:0;z-index:2147483647;background:#faf9f5;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif"><div style="width:min(440px,100%);padding:32px;text-align:center;background:#fff;border:1px solid #ddd;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.12)"><div style="font-size:12px;font-weight:800;letter-spacing:.15em;color:#16835f">MEGA SNAKES • ROUND ANALYZER</div><h1 style="font-size:28px;margin:12px 0 6px">Carregando acesso...</h1><p style="margin:0;color:#777;font-size:14px">Verificando sua conta.</p><button id="mega-google-static" type="button" style="margin-top:18px;width:100%;padding:13px 16px;border:1px solid #d7d7d2;border-radius:10px;background:#fff;color:#222;font-weight:800;cursor:pointer;display:none">CONTINUAR COM GOOGLE</button></div></div>
 
 <title>Mega Snakes Round Analyzer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -154,6 +154,17 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     '.mega-auth-tab.active{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}' +
     '#mega-account-badge{position:fixed;z-index:2147483646;right:14px;bottom:14px;background:#16835f;color:#fff;border:0;border-radius:999px;padding:8px 12px;font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.15);cursor:pointer}';
   document.head.appendChild(css);
+
+  function wireStaticGoogle(){
+    const b=document.getElementById("mega-google-static");
+    if(!b)return;
+    b.style.display="block";
+    b.onclick=async()=>{
+      if(!sb){b.textContent="Carregando Google...";return;}
+      const r=await sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.origin+window.location.pathname}});
+      if(r.error)alert(r.error.message||"O Google ainda não está habilitado no Supabase.");
+    };
+  }
 
   function root(){
     const el=document.getElementById("mega-auth-root");
@@ -369,6 +380,7 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     if(!window.supabase||typeof window.supabase.createClient!=="function"){showLogin("Não foi possível carregar o Supabase.");return;}
 
     sb=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    wireStaticGoogle();
     const r=await sb.auth.getSession();
     if(r.error){showLogin(r.error.message);return;}
 
